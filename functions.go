@@ -668,39 +668,36 @@ static void duckdb_vector_assign_string_element_len(duckdb_vector vector, idx_t 
 
 // List vector
 
-/*
-static duckdb_vector duckdb_list_vector_get_child(duckdb_vector vector) {
-	return duckdb_ext_api->duckdb_list_vector_get_child(vector);
+func ListVectorGetChild(v Vector) Vector {
+	child := C.duckdb_list_vector_get_child(v.data())
+	return Vector{unsafe.Pointer(child)}
 }
 
-static idx_t duckdb_list_vector_get_size(duckdb_vector vector) {
-	return duckdb_ext_api->duckdb_list_vector_get_size(vector);
+func ListVectorGetSize(v Vector) uint64 {
+	return uint64(C.duckdb_list_vector_get_size(v.data()))
 }
 
-static duckdb_state duckdb_list_vector_set_size(duckdb_vector vector, idx_t size) {
-	return duckdb_ext_api->duckdb_list_vector_set_size(vector, size);
+func ListVectorSetSize(v Vector, size uint64) State {
+	return State(C.duckdb_list_vector_set_size(v.data(), C.idx_t(size)))
 }
 
-static duckdb_state duckdb_list_vector_reserve(duckdb_vector vector, idx_t required_capacity) {
-	return duckdb_ext_api->duckdb_list_vector_reserve(vector, required_capacity);
+func ListVectorReserve(v Vector, capacity uint64) State {
+	return State(C.duckdb_list_vector_reserve(v.data(), C.idx_t(capacity)))
 }
-*/
 
 // Struct vector
 
-/*
-static duckdb_vector duckdb_struct_vector_get_child(duckdb_vector vector, idx_t index) {
-	return duckdb_ext_api->duckdb_struct_vector_get_child(vector, index);
+func StructVectorGetChild(v Vector, index uint64) Vector {
+	child := C.duckdb_struct_vector_get_child(v.data(), C.idx_t(index))
+	return Vector{unsafe.Pointer(child)}
 }
-*/
 
 // Array vector
 
-/*
-static duckdb_vector duckdb_array_vector_get_child(duckdb_vector vector) {
-	return duckdb_ext_api->duckdb_array_vector_get_child(vector);
+func ArrayVectorGetChild(v Vector) Vector {
+	child := C.duckdb_array_vector_get_child(v.data())
+	return Vector{unsafe.Pointer(child)}
 }
-*/
 
 // Validity
 
