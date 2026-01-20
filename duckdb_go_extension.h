@@ -44,7 +44,7 @@
 #if !defined(DUCKDB_EXTENSION_API_VERSION_MAJOR) && !defined(DUCKDB_EXTENSION_API_VERSION_MINOR) &&                    \
     !defined(DUCKDB_EXTENSION_API_VERSION_PATCH)
 #define DUCKDB_EXTENSION_API_VERSION_MAJOR 1
-#define DUCKDB_EXTENSION_API_VERSION_MINOR 2
+#define DUCKDB_EXTENSION_API_VERSION_MINOR 4
 #define DUCKDB_EXTENSION_API_VERSION_PATCH 0
 #elif !(defined(DUCKDB_EXTENSION_API_VERSION_MAJOR) && defined(DUCKDB_EXTENSION_API_VERSION_MINOR) &&                  \
         defined(DUCKDB_EXTENSION_API_VERSION_PATCH))
@@ -199,7 +199,7 @@ typedef struct {
 	duckdb_value (*duckdb_create_timestamp)(duckdb_timestamp input);
 	duckdb_value (*duckdb_create_interval)(duckdb_interval input);
 	duckdb_value (*duckdb_create_blob)(const uint8_t *data, idx_t length);
-	duckdb_value (*duckdb_create_varint)(duckdb_varint input);
+	duckdb_value (*duckdb_create_bignum)(duckdb_bignum input);
 	duckdb_value (*duckdb_create_decimal)(duckdb_decimal input);
 	duckdb_value (*duckdb_create_bit)(duckdb_bit input);
 	duckdb_value (*duckdb_create_uuid)(duckdb_uhugeint input);
@@ -223,7 +223,7 @@ typedef struct {
 	duckdb_interval (*duckdb_get_interval)(duckdb_value val);
 	duckdb_logical_type (*duckdb_get_value_type)(duckdb_value val);
 	duckdb_blob (*duckdb_get_blob)(duckdb_value val);
-	duckdb_varint (*duckdb_get_varint)(duckdb_value val);
+	duckdb_bignum (*duckdb_get_bignum)(duckdb_value val);
 	duckdb_decimal (*duckdb_get_decimal)(duckdb_value val);
 	duckdb_bit (*duckdb_get_bit)(duckdb_value val);
 	duckdb_uhugeint (*duckdb_get_uuid)(duckdb_value val);
@@ -1017,8 +1017,8 @@ static duckdb_value duckdb_create_blob(const uint8_t *data, idx_t length) {
 	return duckdb_ext_api->duckdb_create_blob(data, length);
 }
 
-static duckdb_value duckdb_create_varint(duckdb_varint input) {
-	return duckdb_ext_api->duckdb_create_varint(input);
+static duckdb_value duckdb_create_bignum(duckdb_bignum input) {
+	return duckdb_ext_api->duckdb_create_bignum(input);
 }
 
 static duckdb_value duckdb_create_decimal(duckdb_decimal input) {
@@ -1113,8 +1113,8 @@ static duckdb_blob duckdb_get_blob(duckdb_value val) {
 	return duckdb_ext_api->duckdb_get_blob(val);
 }
 
-static duckdb_varint duckdb_get_varint(duckdb_value val) {
-	return duckdb_ext_api->duckdb_get_varint(val);
+static duckdb_bignum duckdb_get_bignum(duckdb_value val) {
+	return duckdb_ext_api->duckdb_get_bignum(val);
 }
 
 static duckdb_decimal duckdb_get_decimal(duckdb_value val) {
