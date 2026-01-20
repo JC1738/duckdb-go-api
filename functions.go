@@ -1,11 +1,37 @@
 package duckdb
 
 /*
+#include <stdlib.h>
 #include <duckdb.h>
 #include <duckdb_go_extension.h>
+
+// Error handling wrappers
+static void go_duckdb_bind_set_error(duckdb_bind_info info, const char *error) {
+	duckdb_ext_api->duckdb_bind_set_error(info, error);
+}
+
+static void go_duckdb_init_set_error(duckdb_init_info info, const char *error) {
+	duckdb_ext_api->duckdb_init_set_error(info, error);
+}
+
+static void go_duckdb_function_set_error(duckdb_function_info info, const char *error) {
+	duckdb_ext_api->duckdb_function_set_error(info, error);
+}
+
+// String vector wrappers
+static void go_duckdb_vector_assign_string_element(duckdb_vector vector, idx_t index, const char *str) {
+	duckdb_ext_api->duckdb_vector_assign_string_element(vector, index, str);
+}
+
+static void go_duckdb_vector_assign_string_element_len(duckdb_vector vector, idx_t index, const char *str, idx_t str_len) {
+	duckdb_ext_api->duckdb_vector_assign_string_element_len(vector, index, str, str_len);
+}
 */
 import "C"
-import "unsafe"
+import (
+	"fmt"
+	"unsafe"
+)
 
 // TODO: should I always pass the custom types as pointers?
 
@@ -654,18 +680,6 @@ func VectorEnsureValidityWritable(v Vector) {
 	C.duckdb_vector_ensure_validity_writable(v.data())
 }
 
-// String vector
-
-/*
-static void duckdb_vector_assign_string_element(duckdb_vector vector, idx_t index, const char *str) {
-	return duckdb_ext_api->duckdb_vector_assign_string_element(vector, index, str);
-}
-
-static void duckdb_vector_assign_string_element_len(duckdb_vector vector, idx_t index, const char *str, idx_t str_len) {
-	return duckdb_ext_api->duckdb_vector_assign_string_element_len(vector, index, str, str_len);
-}
-*/
-
 // List vector
 
 func ListVectorGetChild(v Vector) Vector {
@@ -1251,4 +1265,93 @@ func AddAggregateFunctionToSet(set AggregateFunctionSet, f AggregateFunction) St
 // RegisterAggregateFunctionSet registers an aggregate function set with a connection.
 func RegisterAggregateFunctionSet(c Connection, set AggregateFunctionSet) State {
 	return State(C.duckdb_register_aggregate_function_set(c.data(), set.data()))
+}
+
+// =============================================================================
+// Error Handling Helpers
+// =============================================================================
+// These helpers provide automatic memory management for setting errors on
+// DuckDB function info objects, reducing boilerplate and preventing memory leaks.
+
+// SetBindError sets an error on bind info with automatic memory management.
+// Use this in table function bind callbacks to report errors.
+//
+// Example:
+//
+//	if err != nil {
+//	    duckdb.SetBindError(info, "connection failed: %v", err)
+//	    return
+//	}
+func SetBindError(info BindInfo, format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	cStr := C.CString(msg)
+	C.go_duckdb_bind_set_error(info.data(), cStr)
+	C.free(unsafe.Pointer(cStr))
+}
+
+// SetInitError sets an error on init info with automatic memory management.
+// Use this in table function init callbacks to report errors.
+//
+// Example:
+//
+//	if err != nil {
+//	    duckdb.SetInitError(info, "initialization failed: %v", err)
+//	    return
+//	}
+func SetInitError(info InitInfo, format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	cStr := C.CString(msg)
+	C.go_duckdb_init_set_error(info.data(), cStr)
+	C.free(unsafe.Pointer(cStr))
+}
+
+// SetFunctionError sets an error on function info with automatic memory management.
+// Use this in table function scan callbacks to report errors.
+//
+// Example:
+//
+//	if err != nil {
+//	    duckdb.SetFunctionError(info, "scan failed: %v", err)
+//	    return
+//	}
+func SetFunctionError(info FunctionInfo, format string, args ...interface{}) {
+	msg := fmt.Sprintf(format, args...)
+	cStr := C.CString(msg)
+	C.go_duckdb_function_set_error(info.data(), cStr)
+	C.free(unsafe.Pointer(cStr))
+}
+
+// =============================================================================
+// String/Vector Helpers
+// =============================================================================
+// These helpers provide automatic memory management for assigning strings
+// and binary data to DuckDB vectors.
+
+// AssignStringToVector assigns a Go string to a vector element with automatic
+// memory management. Use this for VARCHAR columns.
+//
+// Example:
+//
+//	duckdb.AssignStringToVector(vec, i, "hello world")
+func AssignStringToVector(vec Vector, idx int, str string) {
+	cStr := C.CString(str)
+	C.go_duckdb_vector_assign_string_element(vec.data(), C.idx_t(idx), cStr)
+	C.free(unsafe.Pointer(cStr))
+}
+
+// AssignBytesToVector assigns binary data to a vector element with automatic
+// memory management. Use this for BLOB columns. Handles empty slices correctly.
+//
+// Example:
+//
+//	duckdb.AssignBytesToVector(vec, i, []byte{0x01, 0x02, 0x03})
+func AssignBytesToVector(vec Vector, idx int, data []byte) {
+	if len(data) == 0 {
+		C.go_duckdb_vector_assign_string_element_len(vec.data(), C.idx_t(idx), nil, 0)
+		return
+	}
+	C.go_duckdb_vector_assign_string_element_len(
+		vec.data(), C.idx_t(idx),
+		(*C.char)(unsafe.Pointer(&data[0])),
+		C.idx_t(len(data)))
 }
