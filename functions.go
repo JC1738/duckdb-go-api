@@ -1141,3 +1141,114 @@ static duckdb_value duckdb_profiling_info_get_metrics(duckdb_profiling_info info
 //func RegisterScalarFunctionSet(conn Connection, set ScalarFunctionSet) State {
 //	return State(C.duckdb_register_scalar_function_set(conn.c, set.c))
 //}
+
+// Aggregate function
+
+// CreateAggregateFunction creates a new aggregate function object.
+// Must be destroyed with DestroyAggregateFunction.
+func CreateAggregateFunction() AggregateFunction {
+	data := C.duckdb_create_aggregate_function()
+	return AggregateFunction{unsafe.Pointer(data)}
+}
+
+// DestroyAggregateFunction destroys an aggregate function object.
+func DestroyAggregateFunction(f *AggregateFunction) {
+	data := f.data()
+	C.duckdb_destroy_aggregate_function(&data)
+	f.Ptr = nil
+}
+
+// AggregateFunctionSetName sets the name of the aggregate function.
+func AggregateFunctionSetName(f AggregateFunction, name string) {
+	cName := C.CString(name)
+	defer C.duckdb_free(unsafe.Pointer(cName))
+	C.duckdb_aggregate_function_set_name(f.data(), cName)
+}
+
+// AggregateFunctionAddParameter adds a parameter to the aggregate function.
+func AggregateFunctionAddParameter(f AggregateFunction, t LogicalType) {
+	C.duckdb_aggregate_function_add_parameter(f.data(), t.data())
+}
+
+// AggregateFunctionSetReturnType sets the return type of the aggregate function.
+func AggregateFunctionSetReturnType(f AggregateFunction, t LogicalType) {
+	C.duckdb_aggregate_function_set_return_type(f.data(), t.data())
+}
+
+// AggregateFunctionSetFunctions sets the main callback functions for the aggregate.
+// The callbacks are:
+//   - stateSize: returns the size of the aggregate state
+//   - stateInit: initializes the aggregate state
+//   - update: updates the aggregate state with new input
+//   - combine: combines two aggregate states (for parallel execution)
+//   - finalize: produces the final result from the aggregate state
+func AggregateFunctionSetFunctions(f AggregateFunction, stateSize, stateInit, update, combine, finalize unsafe.Pointer) {
+	C.duckdb_aggregate_function_set_functions(
+		f.data(),
+		C.duckdb_aggregate_state_size(stateSize),
+		C.duckdb_aggregate_init_t(stateInit),
+		C.duckdb_aggregate_update_t(update),
+		C.duckdb_aggregate_combine_t(combine),
+		C.duckdb_aggregate_finalize_t(finalize),
+	)
+}
+
+// AggregateFunctionSetDestructor sets the destructor function for the aggregate state.
+func AggregateFunctionSetDestructor(f AggregateFunction, destroy unsafe.Pointer) {
+	C.duckdb_aggregate_function_set_destructor(f.data(), C.duckdb_aggregate_destroy_t(destroy))
+}
+
+// RegisterAggregateFunction registers an aggregate function with a connection.
+func RegisterAggregateFunction(c Connection, f AggregateFunction) State {
+	return State(C.duckdb_register_aggregate_function(c.data(), f.data()))
+}
+
+// AggregateFunctionSetSpecialHandling sets special null handling for the aggregate function.
+func AggregateFunctionSetSpecialHandling(f AggregateFunction) {
+	C.duckdb_aggregate_function_set_special_handling(f.data())
+}
+
+// AggregateFunctionSetExtraInfo sets extra info for the aggregate function.
+func AggregateFunctionSetExtraInfo(f AggregateFunction, extraInfo unsafe.Pointer, destroy unsafe.Pointer) {
+	C.duckdb_aggregate_function_set_extra_info(f.data(), extraInfo, C.duckdb_delete_callback_t(destroy))
+}
+
+// AggregateFunctionGetExtraInfo retrieves the extra info from a function info handle.
+func AggregateFunctionGetExtraInfo(info FunctionInfo) unsafe.Pointer {
+	return C.duckdb_aggregate_function_get_extra_info(info.data())
+}
+
+// AggregateFunctionSetError sets an error on the aggregate function.
+func AggregateFunctionSetError(info FunctionInfo, err string) {
+	cErr := C.CString(err)
+	defer C.duckdb_free(unsafe.Pointer(cErr))
+	C.duckdb_aggregate_function_set_error(info.data(), cErr)
+}
+
+// Aggregate function set (for overloads)
+
+// CreateAggregateFunctionSet creates a new aggregate function set for registering overloads.
+// Must be destroyed with DestroyAggregateFunctionSet.
+func CreateAggregateFunctionSet(name string) AggregateFunctionSet {
+	cName := C.CString(name)
+	defer C.duckdb_free(unsafe.Pointer(cName))
+	data := C.duckdb_create_aggregate_function_set(cName)
+	return AggregateFunctionSet{unsafe.Pointer(data)}
+}
+
+// DestroyAggregateFunctionSet destroys an aggregate function set.
+func DestroyAggregateFunctionSet(set *AggregateFunctionSet) {
+	data := set.data()
+	C.duckdb_destroy_aggregate_function_set(&data)
+	set.Ptr = nil
+}
+
+// AddAggregateFunctionToSet adds an aggregate function to the set.
+func AddAggregateFunctionToSet(set AggregateFunctionSet, f AggregateFunction) State {
+	return State(C.duckdb_add_aggregate_function_to_set(set.data(), f.data()))
+}
+
+// RegisterAggregateFunctionSet registers an aggregate function set with a connection.
+func RegisterAggregateFunctionSet(c Connection, set AggregateFunctionSet) State {
+	return State(C.duckdb_register_aggregate_function_set(c.data(), set.data()))
+}
